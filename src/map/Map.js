@@ -1,6 +1,8 @@
+import React from 'react';
 import { useEffect, useState } from 'react'
-import ReactMapGL, { Source, Layer } from 'react-map-gl'
+import MapGL, { Source, Layer } from 'react-map-gl'
 import mapGrid from './consts/map-grid.json'
+import { dataLayer } from './utils/data-layer'
 
 function Map() {
   const [viewport, setViewport] = useState({
@@ -10,16 +12,13 @@ function Map() {
     width: window.innerWidth,
     height: window.innerHeight
   })
-  // const [data, setData] = useState(null)
-  // const [isLoding, setIsLoaging] = useState(false)
-  // const [isError, setIsError] = useState(false)
+  const [data, setData] = useState(null)
 
   useEffect(() => {
-    // setIsLoaging(true)
     const date = new Date()
     const today = date.getDate() + '-' + (date.getMonth() + 1) + '-' + date.getFullYear()
-    console.log(mapGrid.features)
-    const points = mapGrid.features.map(item => (
+    let tempData = []
+    let points = mapGrid.features.map(item => (
       {
         ...item,
         properties: {
@@ -31,33 +30,31 @@ function Map() {
       }
     ))
 
-    for (let i = 0; i < 3; i++) {
-      fetch(`http://localhost:8000/weatherByLongLatAndDate?lat=${points[i].properties.center[0]}&lon=${points[i].properties.center[1]}&date=${today}`)
-        .then(res => {
-          if (res.status === 200) {
-            console.log(res.json())
-          }
-        })
+    for (let i = 0; i < 50; i++) {
+      fetch(`http://localhost:8000/weatherByLongLatAndDate/?lat=${points[i].properties.center[1]}&lon=${points[i].properties.center[0]}&date=${today}`)
+        .then(res => res.json().then(resData => {
+          tempData = [...tempData, { ...points[i], properties: { ...points[i].properties, ...resData, percentile: Math.floor(Math.random() * 10) } }]
+          setData({ type: 'FeatureCollection', features: tempData })
+        }))
         .catch(error => {
           console.error(error)
-          // setIsError(true)
         })
     }
-
-    // return () => clearInterval()
   }, [])
 
+  console.log(data)
+
   return (
-    <ReactMapGL
+    <MapGL
       {...viewport}
       mapboxApiAccessToken='pk.eyJ1IjoiYXZlbHVkb3dpayIsImEiOiJja3ZvODAxdXYwcnZsMnBqcGFsdGFvYnpsIn0.GXnlJJJPUArw7jszNQJ0eQ'
       onViewportChange={(viewport) => setViewport(viewport)}
       mapStyle='mapbox://styles/mapbox/light-v9'
     >
-      {/* <Source type='geojson' data={data}>
-        <Layer {...dataLayer} />
-      </Source> */}
-    </ReactMapGL>
+      <Source id='test' type='geojson' data={data}>
+        <Layer {...dataLayer} type='fill' />
+      </Source>
+    </MapGL>
   )
 }
 export default Map
